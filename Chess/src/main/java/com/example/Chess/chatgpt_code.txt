@@ -1,0 +1,369 @@
+// Enums
+public enum Color {
+    WHITE, BLACK;
+}
+
+public enum GameStatus {
+    ACTIVE, BLACK_WIN, WHITE_WIN, STALEMATE;
+}
+
+// Player class
+public class Player {
+    private String name;
+    private Color color;
+    private boolean isAI;
+
+    public Player(String name, Color color, boolean isAI) {
+        this.name = name;
+        this.color = color;
+        this.isAI = isAI;
+    }
+
+    public String getName() { return name; }
+    public Color getColor() { return color; }
+    public boolean isAI() { return isAI; }
+}
+
+// Box class
+public class Box {
+    private int x;
+    private int y;
+    private Piece piece;
+
+    public Box(int x, int y, Piece piece) {
+        this.x = x;
+        this.y = y;
+        this.piece = piece;
+    }
+
+    public Piece getPiece() { return piece; }
+    public void setPiece(Piece piece) { this.piece = piece; }
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public boolean isEmpty() { return piece == null; }
+}
+
+// Abstract Piece class
+public abstract class Piece {
+    private Color color;
+
+    public Piece(Color color) {
+        this.color = color;
+    }
+
+    public Color getColor() { return color; }
+    public abstract boolean canMove(Board board, Box start, Box end);
+}
+
+public class King extends Piece {
+    public King(Color color) { super(color); }
+
+    @Override
+    public boolean canMove(Board board, Box start, Box end) {
+        int dx = Math.abs(start.getX() - end.getX());
+        int dy = Math.abs(start.getY() - end.getY());
+        return (dx <= 1 && dy <= 1);
+    }
+}
+
+public class Queen extends Piece {
+    public Queen(Color color) { super(color); }
+
+    @Override
+    public boolean canMove(Board board, Box start, Box end) {
+        int dx = Math.abs(start.getX() - end.getX());
+        int dy = Math.abs(start.getY() - end.getY());
+        return dx == dy || start.getX() == end.getX() || start.getY() == end.getY();
+    }
+}
+
+public class Rook extends Piece {
+    public Rook(Color color) { super(color); }
+
+    @Override
+    public boolean canMove(Board board, Box start, Box end) {
+        return start.getX() == end.getX() || start.getY() == end.getY();
+    }
+}
+
+public class Bishop extends Piece {
+    public Bishop(Color color) { super(color); }
+
+    @Override
+    public boolean canMove(Board board, Box start, Box end) {
+        int dx = Math.abs(start.getX() - end.getX());
+        int dy = Math.abs(start.getY() - end.getY());
+        return dx == dy;
+    }
+}
+
+public class Knight extends Piece {
+    public Knight(Color color) { super(color); }
+
+    @Override
+    public boolean canMove(Board board, Box start, Box end) {
+        int dx = Math.abs(start.getX() - end.getX());
+        int dy = Math.abs(start.getY() - end.getY());
+        return (dx == 2 && dy == 1) || (dx == 1 && dy == 2);
+    }
+}
+
+public class Pawn extends in Piece {
+    public Pawn(Color color) { super(color); }
+
+    @Override
+    public boolean canMove(Board board, Box start, Box end) {
+        int dir = getColor() == Color.WHITE ? -1 : 1;
+        int dx = end.getX() - start.getX();
+        int dy = Math.abs(start.getY() - end.getY());
+        return dy == 0 && dx == dir && end.isEmpty();
+    }
+}
+
+// Board class
+public class Board {
+    private Box[][] boxes;
+
+    public Board() {
+        boxes = new Box[8][8];
+        resetBoard();
+    }
+
+    public void resetBoard() {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                boxes[i][j] = new Box(i, j, null);
+            }
+        }
+
+        // Place black pieces
+        boxes[0][0].setPiece(new Rook(Color.BLACK));
+        boxes[0][1].setPiece(new Knight(Color.BLACK));
+        boxes[0][2].setPiece(new Bishop(Color.BLACK));
+        boxes[0][3].setPiece(new Queen(Color.BLACK));
+        boxes[0][4].setPiece(new King(Color.BLACK));
+        boxes[0][5].setPiece(new Bishop(Color.BLACK));
+        boxes[0][6].setPiece(new Knight(Color.BLACK));
+        boxes[0][7].setPiece(new Rook(Color.BLACK));
+        for (int j = 0; j < 8; j++) {
+            boxes[1][j].setPiece(new Pawn(Color.BLACK));
+        }
+
+        // Place white pieces
+        boxes[7][0].setPiece(new Rook(Color.WHITE));
+        boxes[7][1].setPiece(new Knight(Color.WHITE));
+        boxes[7][2].setPiece(new Bishop(Color.WHITE));
+        boxes[7][3].setPiece(new Queen(Color.WHITE));
+        boxes[7][4].setPiece(new King(Color.WHITE));
+        boxes[7][5].setPiece(new Bishop(Color.WHITE));
+        boxes[7][6].setPiece(new Knight(Color.WHITE));
+        boxes[7][7].setPiece(new Rook(Color.WHITE));
+        for (int j = 0; j < 8; j++) {
+            boxes[6][j].setPiece(new Pawn(Color.WHITE));
+        }
+    }
+
+    public Box getBox(int x, int y) {
+        if (x < 0 || x >= 8 || y < 0 || y >= 8) return null;
+        return boxes[x][y];
+    }
+}
+
+// Move class
+public class Move {
+    private Player player;
+    private Box start;
+    private Box end;
+    private Piece pieceMoved;
+    private Piece pieceKilled;
+
+    public Move(Player player, Box start, Box end) {
+        this.player = player;
+        this.start = start;
+        this.end = end;
+        this.pieceMoved = start.getPiece();
+        this.pieceKilled = end.getPiece();
+    }
+
+    public Piece getPieceKilled() {
+        return pieceKilled;
+    }
+}
+
+// Observer Pattern
+public interface GameEventListener {
+    void onMove(Move move);
+    void onCheck(Player player);
+    void onCheckmate(Player winner);
+    void onDraw();
+}
+
+// Game class
+public class Game {
+    private Player whitePlayer;
+    private Player blackPlayer;
+    private Board board;
+    private Player currentTurn;
+    private GameStatus status;
+    private List<Move> moves;
+    private List<GameEventListener> listeners;
+
+    public Game(Player white, Player black) {
+        this.whitePlayer = white;
+        this.blackPlayer = black;
+        this.board = new Board();
+        this.currentTurn = white;
+        this.status = GameStatus.ACTIVE;
+        this.moves = new ArrayList<>();
+        this.listeners = new ArrayList<>();
+    }
+
+    public void addListener(GameEventListener listener) {
+        listeners.add(listener);
+    }
+
+    public boolean playerMove(int startX, int startY, int endX, int endY) {
+        Box startBox = board.getBox(startX, startY);
+        Box endBox = board.getBox(endX, endY);
+
+        Piece piece = startBox.getPiece();
+        if (piece == null || piece.getColor() != currentTurn.getColor()) return false;
+
+        if (!piece.canMove(board, startBox, endBox)) return false;
+
+        Move move = new Move(currentTurn, startBox, endBox);
+        endBox.setPiece(piece);
+        startBox.setPiece(null);
+        moves.add(move);
+
+        // Check for king capture
+        if (move.getPieceKilled() instanceof King) {
+            status = (currentTurn.getColor() == Color.WHITE) ? GameStatus.WHITE_WIN : GameStatus.BLACK_WIN;
+            for (GameEventListener listener : listeners) {
+                listener.onCheckmate(currentTurn);
+            }
+        } else {
+            for (GameEventListener listener : listeners) {
+                listener.onMove(move);
+            }
+            currentTurn = (currentTurn == whitePlayer) ? blackPlayer : whitePlayer;
+        }
+
+        return true;
+    }
+}
+
+// TODO-1 checkmate / stalemate check
+public boolean isCheckmate(Player player) {
+    // Find the king of the player
+    King king = null;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            Piece piece = board.getBox(i, j).getPiece();
+            if (piece instanceof King && piece.getColor() == player.getColor()) {
+                king = (King) piece;
+                break;
+            }
+        }
+    }
+
+    if (king == null) return false; // King is not found
+
+    // Check if the King is in check and if the player has no valid moves to escape
+    if (!isInCheck(player)) return false; // Player is not in check
+    return !hasValidMoves(player); // If the player has no valid moves, it's checkmate
+}
+
+private boolean isInCheck(Player player) {
+    // Logic to check if the player's King is in check (other player's piece can attack the King's position)
+    King king = null;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            Piece piece = board.getBox(i, j).getPiece();
+            if (piece instanceof King && piece.getColor() == player.getColor()) {
+                king = (King) piece;
+                break;
+            }
+        }
+    }
+
+    // Now, check if any of the opponent's pieces can attack the King's position
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            Piece piece = board.getBox(i, j).getPiece();
+            if (piece != null && piece.getColor() != player.getColor()) {
+                if (piece.canMove(board, board.getBox(i, j), board.getBox(king.getX(), king.getY()))) {
+                    return true; // If an opponent's piece can attack the King, it's check
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// TODO: 2 valid moves check
+private boolean hasValidMoves(Player player) {
+    // Check all the pieces of the player if they have valid moves
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            Box startBox = board.getBox(i, j);
+            if (startBox.isEmpty()) continue;
+            Piece piece = startBox.getPiece();
+            if (piece.getColor() == player.getColor()) {
+                // Try every possible move for this piece
+                for (int x = 0; x < 8; x++) {
+                    for (int y = 0; y < 8; y++) {
+                        Box endBox = board.getBox(x, y);
+                        if (piece.canMove(board, startBox, endBox)) {
+                            return true; // If any piece has a valid move, return true
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false; // No valid moves for this player
+}
+
+//  TODO-3: Update the playerMove() method to check for stalemate or loss:
+public boolean playerMove(int startX, int startY, int endX, int endY) {
+    Box startBox = board.getBox(startX, startY);
+    Box endBox = board.getBox(endX, endY);
+
+    Piece piece = startBox.getPiece();
+    if (piece == null || piece.getColor() != currentTurn.getColor()) return false;
+    if (!piece.canMove(board, startBox, endBox)) return false;
+
+    Move move = new Move(currentTurn, startBox, endBox);
+    endBox.setPiece(piece);
+    startBox.setPiece(null);
+    moves.add(move);
+
+    // Check for king capture (win condition)
+    if (move.getPieceKilled() instanceof King) {
+        status = (currentTurn.getColor() == Color.WHITE) ? GameStatus.WHITE_WIN : GameStatus.BLACK_WIN;
+        for (GameEventListener listener : listeners) {
+            listener.onCheckmate(currentTurn);
+        }
+    } else if (isCheckmate(currentTurn)) {
+        // If the current player is in checkmate, they lose
+        status = (currentTurn.getColor() == Color.WHITE) ? GameStatus.BLACK_WIN : GameStatus.WHITE_WIN;
+        for (GameEventListener listener : listeners) {
+            listener.onCheckmate(currentTurn == whitePlayer ? blackPlayer : whitePlayer);
+        }
+    } else if (!hasValidMoves(currentTurn)) {
+        // If the current player has no valid moves and is not in check, it's stalemate
+        status = GameStatus.STALEMATE;
+        for (GameEventListener listener : listeners) {
+            listener.onDraw();
+        }
+    } else {
+        // Normal turn progression
+        for (GameEventListener listener : listeners) {
+            listener.onMove(move);
+        }
+        currentTurn = (currentTurn == whitePlayer) ? blackPlayer : whitePlayer;
+    }
+
+    return true;
+}
